@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="A sleek stopwatch with sound — start, stop, and reset." />
+  <title>Stopwatch</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="backdrop"></div>
+
+  <main class="card" role="main">
+    <header class="card__header">
+      <span class="dot" aria-hidden="true"></span>
+      <h1 class="title">STOPWATCH</h1>
+    </header>
+
+    <section class="display" aria-live="polite" aria-atomic="true">
+      <span id="time" class="display__time">00:00<span class="display__ms">.00</span></span>
+    </section>
+
+    <div class="status" id="status">Ready</div>
+
+    <div class="controls">
+      <button id="startStop" class="btn btn--primary" type="button" aria-label="Start">
+        <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><polygon points="6,4 20,12 6,20" /></svg>
+        <span class="btn__label">Start</span>
+      </button>
+      <button id="reset" class="btn btn--ghost" type="button" aria-label="Reset">
+        <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5V2L7 7l5 5V8a5 5 0 1 1-5 5H5a7 7 0 1 0 7-8z"/></svg>
+        <span class="btn__label">Reset</span>
+      </button>
+    </div>
+
+    <button id="sound" class="sound-toggle" type="button" aria-pressed="true" title="Toggle sound">
+      <svg class="icon icon--sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 9v6h4l5 5V4L7 9H3z"/><path d="M16 8a5 5 0 0 1 0 8"/><path d="M19 5a9 9 0 0 1 0 14"/></svg>
+      <span>Sound on</span>
+    </button>
+  </main>
+
+  <script src="script.js"></script>
+</body>
+</html>
