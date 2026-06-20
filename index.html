@@ -16,14 +16,28 @@
   <main class="card" role="main">
     <header class="card__header">
       <span class="dot" aria-hidden="true"></span>
-      <h1 class="title">STOPWATCH</h1>
+      <h1 class="title" id="title">STOPWATCH</h1>
     </header>
+
+    <div class="modes" role="tablist" aria-label="Mode">
+      <button id="modeStopwatch" class="mode is-active" type="button" role="tab" aria-selected="true">Stopwatch</button>
+      <button id="modeGame" class="mode" type="button" role="tab" aria-selected="false">Game</button>
+      <span class="modes__slider" aria-hidden="true"></span>
+    </div>
+
+    <div class="target" id="target" hidden>
+      <label for="targetInput">Target</label>
+      <input id="targetInput" class="target__input" type="number" min="0" step="0.1" value="5" inputmode="decimal" />
+      <span class="target__unit">sec</span>
+    </div>
 
     <section class="display" aria-live="polite" aria-atomic="true">
       <span id="time" class="display__time">00:00<span class="display__ms">.00</span></span>
     </section>
 
     <div class="status" id="status">Ready</div>
+
+    <div class="result" id="result" hidden></div>
 
     <div class="controls">
       <button id="startStop" class="btn btn--primary" type="button" aria-label="Start">

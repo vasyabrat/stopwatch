@@ -109,6 +109,80 @@ body.running .dot {
   color: var(--silver-dim);
 }
 
+/* ---- Mode toggle ---- */
+.modes {
+  position: relative;
+  display: inline-flex;
+  gap: 4px;
+  margin: 0 auto 22px;
+  padding: 4px;
+  border-radius: 999px;
+  background: rgba(201, 210, 221, 0.06);
+  border: 1px solid var(--line);
+}
+.mode {
+  position: relative;
+  z-index: 1;
+  border: none;
+  background: transparent;
+  color: var(--silver-dim);
+  font-family: "Inter", sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  padding: 8px 22px;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: color 0.25s;
+}
+.mode.is-active { color: var(--silver-bright); }
+.mode:focus-visible { outline: 2px solid var(--blue-bright); outline-offset: 2px; }
+.modes__slider {
+  position: absolute;
+  z-index: 0;
+  top: 4px;
+  left: 4px;
+  width: calc(50% - 4px);
+  height: calc(100% - 8px);
+  border-radius: 999px;
+  background: linear-gradient(180deg, var(--blue), var(--blue-deep));
+  box-shadow: 0 6px 16px -6px var(--glow);
+  transition: transform 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.modes.game .modes__slider { transform: translateX(100%); }
+
+/* ---- Target input (game mode) ---- */
+.target {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  margin: -6px 0 18px;
+  color: var(--silver-dim);
+  font-size: 13px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  animation: fadeIn 0.3s ease;
+}
+.target__input {
+  width: 88px;
+  padding: 8px 10px;
+  text-align: center;
+  font-family: "Orbitron", sans-serif;
+  font-size: 18px;
+  color: var(--silver-bright);
+  background: rgba(5, 7, 11, 0.6);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+.target__input:focus { border-color: var(--blue); box-shadow: 0 0 0 3px rgba(61,169,252,0.18); }
+.target__input::-webkit-outer-spin-button,
+.target__input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+.target__input { -moz-appearance: textfield; }
+.target__unit { font-size: 12px; }
+
 .display {
   margin: 8px 0 14px;
   padding: 10px 0;
@@ -143,6 +217,28 @@ body.running .dot {
 }
 
 body.running .status { color: var(--blue); }
+
+/* Hidden timer while a blind game round is running */
+.display__time.is-hidden {
+  color: var(--silver-dim);
+  letter-spacing: 10px;
+  text-shadow: none;
+  opacity: 0.7;
+}
+
+/* ---- Result line (game mode) ---- */
+.result {
+  margin: -10px 0 22px;
+  min-height: 22px;
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  animation: fadeIn 0.35s ease;
+}
+.result .result__off { color: var(--silver); }
+.result.is-perfect { color: var(--blue-bright); text-shadow: 0 0 18px rgba(108,196,255,0.4); }
+.result.is-close { color: var(--blue); }
+.result.is-far { color: var(--silver-dim); }
 
 .controls {
   display: flex;

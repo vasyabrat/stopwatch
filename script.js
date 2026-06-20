@@ -4,14 +4,23 @@
   // ---- Elements ----
   const timeEl = document.getElementById("time");
   const statusEl = document.getElementById("status");
+  const titleEl = document.getElementById("title");
   const startStopBtn = document.getElementById("startStop");
   const resetBtn = document.getElementById("reset");
   const soundBtn = document.getElementById("sound");
   const startLabel = startStopBtn.querySelector(".btn__label");
   const startIcon = startStopBtn.querySelector(".icon");
 
+  const modesEl = document.querySelector(".modes");
+  const modeStopwatchBtn = document.getElementById("modeStopwatch");
+  const modeGameBtn = document.getElementById("modeGame");
+  const targetWrap = document.getElementById("target");
+  const targetInput = document.getElementById("targetInput");
+  const resultEl = document.getElementById("result");
+
   const PLAY = '<polygon points="6,4 20,12 6,20" />';
   const PAUSE = '<rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/>';
+  const MASK = '••<span class="display__ms">••</span>';
 
   // ---- State ----
   let startTime = 0;       // timestamp the current run began
@@ -19,6 +28,7 @@
   let rafId = null;
   let running = false;
   let soundOn = true;
+  let gameMode = false;    // false = stopwatch, true = blind game
 
   // ---- Audio (Web Audio API — no files needed) ----
   let audioCtx = null;
@@ -30,7 +40,6 @@
     return audioCtx;
   }
 
-  // A short, clean beep. Two tones distinguish start vs stop.
   function beep(freq, duration, type) {
     if (!soundOn) return;
     const ac = ctx();
@@ -53,17 +62,21 @@
   }
 
   function startSound() {
-    // rising two-note chirp
     beep(660, 0.12, "sine");
     setTimeout(() => beep(990, 0.16, "sine"), 90);
   }
   function stopSound() {
-    // falling two-note chirp
     beep(550, 0.12, "sine");
     setTimeout(() => beep(360, 0.18, "sine"), 90);
   }
   function resetSound() {
     beep(440, 0.08, "triangle");
+  }
+  // Little fanfare when a game round lands very close
+  function winSound() {
+    beep(784, 0.1, "sine");
+    setTimeout(() => beep(988, 0.1, "sine"), 100);
+    setTimeout(() => beep(1319, 0.2, "sine"), 210);
   }
 
   // ---- Time formatting ----
@@ -89,20 +102,63 @@
     rafId = requestAnimationFrame(tick);
   }
 
+  // ---- Game-mode result ----
+  function showResult(ms) {
+    // Use the same centisecond value the display shows, so they never disagree.
+    const seconds = Math.floor(ms / 10) / 100;
+    const target = parseFloat(targetInput.value);
+
+    if (isNaN(target) || target <= 0) {
+      resultEl.className = "result";
+      resultEl.innerHTML = "You hit <strong>" + seconds.toFixed(2) + "s</strong>";
+      resultEl.hidden = false;
+      return;
+    }
+
+    const diff = Math.abs(seconds - target);
+    const sign = seconds >= target ? "+" : "−";
+    let cls = "is-far";
+    let msg;
+
+    if (diff < 0.05) {
+      cls = "is-perfect";
+      msg = "🎯 Perfect! Bang on " + target.toFixed(2) + "s";
+      winSound();
+    } else {
+      if (diff <= 0.5) cls = "is-close";
+      msg =
+        '<span class="result__off">' + sign + diff.toFixed(2) + "s</span> off — you hit " +
+        "<strong>" + seconds.toFixed(2) + "s</strong>";
+    }
+
+    resultEl.className = "result " + cls;
+    resultEl.innerHTML = msg;
+    resultEl.hidden = false;
+  }
+
   // ---- Controls ----
   function start() {
     if (running) return;
     running = true;
     startTime = performance.now();
-    rafId = requestAnimationFrame(tick);
 
     document.body.classList.add("running");
     startStopBtn.classList.add("is-stop");
     startStopBtn.setAttribute("aria-label", "Stop");
     startLabel.textContent = "Stop";
     startIcon.innerHTML = PAUSE;
-    statusEl.textContent = "Running";
     startSound();
+
+    if (gameMode) {
+      // Blind round: hide the time, rely on sound/feel.
+      resultEl.hidden = true;
+      timeEl.classList.add("is-hidden");
+      timeEl.innerHTML = MASK;
+      statusEl.textContent = "Listening…";
+    } else {
+      statusEl.textContent = "Running";
+      rafId = requestAnimationFrame(tick);
+    }
   }
 
   function stop() {
@@ -110,29 +166,41 @@
     running = false;
     cancelAnimationFrame(rafId);
     elapsed += performance.now() - startTime;
-    render(elapsed);
 
     document.body.classList.remove("running");
     startStopBtn.classList.remove("is-stop");
     startStopBtn.setAttribute("aria-label", "Start");
-    startLabel.textContent = "Resume";
     startIcon.innerHTML = PLAY;
-    statusEl.textContent = "Paused";
     stopSound();
+
+    if (gameMode) {
+      timeEl.classList.remove("is-hidden");
+      render(elapsed);              // reveal the hidden time
+      startLabel.textContent = "Start";
+      statusEl.textContent = "Result";
+      showResult(elapsed);
+      elapsed = 0;                  // each game round is independent
+    } else {
+      render(elapsed);
+      startLabel.textContent = "Resume";
+      statusEl.textContent = "Paused";
+    }
   }
 
   function reset() {
     running = false;
     cancelAnimationFrame(rafId);
     elapsed = 0;
+    timeEl.classList.remove("is-hidden");
     render(0);
+    resultEl.hidden = true;
 
     document.body.classList.remove("running");
     startStopBtn.classList.remove("is-stop");
     startStopBtn.setAttribute("aria-label", "Start");
     startLabel.textContent = "Start";
     startIcon.innerHTML = PLAY;
-    statusEl.textContent = "Ready";
+    statusEl.textContent = gameMode ? "Set a target, then go blind" : "Ready";
     resetSound();
   }
 
@@ -140,19 +208,50 @@
     running ? stop() : start();
   }
 
+  // ---- Mode switching ----
+  function setMode(toGame) {
+    if (gameMode === toGame) return;
+    gameMode = toGame;
+
+    // Stop anything in flight and clear the board.
+    running = false;
+    cancelAnimationFrame(rafId);
+    elapsed = 0;
+    timeEl.classList.remove("is-hidden");
+    render(0);
+    resultEl.hidden = true;
+    document.body.classList.remove("running");
+    startStopBtn.classList.remove("is-stop");
+    startStopBtn.setAttribute("aria-label", "Start");
+    startLabel.textContent = "Start";
+    startIcon.innerHTML = PLAY;
+
+    modesEl.classList.toggle("game", toGame);
+    modeGameBtn.classList.toggle("is-active", toGame);
+    modeStopwatchBtn.classList.toggle("is-active", !toGame);
+    modeGameBtn.setAttribute("aria-selected", String(toGame));
+    modeStopwatchBtn.setAttribute("aria-selected", String(!toGame));
+    targetWrap.hidden = !toGame;
+    titleEl.textContent = toGame ? "GUESS THE TIME" : "STOPWATCH";
+    statusEl.textContent = toGame ? "Set a target, then go blind" : "Ready";
+  }
+
   // ---- Wire up ----
   startStopBtn.addEventListener("click", toggleStartStop);
   resetBtn.addEventListener("click", reset);
+  modeStopwatchBtn.addEventListener("click", () => setMode(false));
+  modeGameBtn.addEventListener("click", () => setMode(true));
 
   soundBtn.addEventListener("click", function () {
     soundOn = !soundOn;
     soundBtn.setAttribute("aria-pressed", String(soundOn));
     soundBtn.querySelector("span").textContent = soundOn ? "Sound on" : "Sound off";
-    if (soundOn) beep(880, 0.07, "sine"); // little confirmation blip
+    if (soundOn) beep(880, 0.07, "sine");
   });
 
   // Keyboard: Space toggles, R resets
   document.addEventListener("keydown", function (e) {
+    if (e.target.tagName === "INPUT") return; // don't hijack the target field
     if (e.code === "Space" && e.target.tagName !== "BUTTON") {
       e.preventDefault();
       toggleStartStop();

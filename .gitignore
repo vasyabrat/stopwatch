@@ -4,6 +4,9 @@ node_modules/
 # Vercel
 .vercel/
 
+# Local Claude Code preview config
+.claude/
+
 # OS / editor cruft
 .DS_Store
 Thumbs.db
