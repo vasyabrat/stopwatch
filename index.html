@@ -19,6 +19,7 @@
       <h1 class="title" id="title">STOPWATCH</h1>
     </header>
 
+    <div id="soloView">
     <div class="modes" role="tablist" aria-label="Mode">
       <button id="modeStopwatch" class="mode is-active" type="button" role="tab" aria-selected="true">Stopwatch</button>
       <button id="modeGame" class="mode" type="button" role="tab" aria-selected="false">Game</button>
@@ -54,8 +55,96 @@
       <svg class="icon icon--sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 9v6h4l5 5V4L7 9H3z"/><path d="M16 8a5 5 0 0 1 0 8"/><path d="M19 5a9 9 0 0 1 0 14"/></svg>
       <span>Sound on</span>
     </button>
+
+    <button id="openOnline" class="online-cta" type="button">🎮 Play online with friends</button>
+    </div><!-- /soloView -->
+
+    <!-- ===================== ONLINE MULTIPLAYER ===================== -->
+    <div id="onlineView" hidden>
+      <button id="closeOnline" class="mp-text-btn mp-back">← Solo modes</button>
+
+      <!-- Not configured -->
+      <div id="mpNotConfigured" class="mp-screen mp-notice" hidden>
+        <p><strong>Online multiplayer needs a quick one-time setup.</strong></p>
+        <p class="mp-sub">Add your free Firebase keys in <code>firebase-config.js</code> (see the README → "Online multiplayer setup"), then refresh this page.</p>
+      </div>
+
+      <!-- Home -->
+      <div id="mpHome" class="mp-screen" hidden>
+        <label class="mp-label" for="mpName">Your name</label>
+        <input id="mpName" class="mp-input" maxlength="14" placeholder="e.g. Danil" autocomplete="off" />
+        <button id="mpCreateBtn" class="btn btn--primary mp-wide" type="button">Create game</button>
+        <div class="mp-or"><span>or join one</span></div>
+        <div class="mp-join-row">
+          <input id="mpCodeInput" class="mp-input mp-code-input" maxlength="4" placeholder="CODE" autocomplete="off" />
+          <button id="mpJoinBtn" class="btn btn--ghost" type="button">Join</button>
+        </div>
+        <div id="mpHomeError" class="mp-error" aria-live="polite"></div>
+      </div>
+
+      <!-- Create: choose game type -->
+      <div id="mpCreate" class="mp-screen" hidden>
+        <div class="mp-label">Choose a game</div>
+        <button class="gametype" type="button" data-mode="impostor">
+          <span class="gametype__name">🕵️ Impostor</span>
+          <span class="gametype__desc">Everyone gets the same secret number — except one. Go blind, one by one. Listen, then vote out the impostor.</span>
+        </button>
+        <button class="gametype" type="button" data-mode="closest">
+          <span class="gametype__name">🎯 Closest Wins</span>
+          <span class="gametype__desc">Everyone aims for the same target time, blind. Closest guess wins.</span>
+        </button>
+        <button id="mpCreateBack" class="mp-text-btn" type="button">← Back</button>
+      </div>
+
+      <!-- Lobby -->
+      <div id="mpLobby" class="mp-screen" hidden>
+        <div class="mp-code">CODE <strong id="mpLobbyCode">----</strong>
+          <button id="mpCopyCode" class="mp-copy" type="button" title="Copy code">⧉</button>
+        </div>
+        <div id="mpGameTypeLabel" class="mp-gametype-label"></div>
+        <div id="mpTargetSetup" class="mp-target-setup" hidden>
+          <label for="mpTargetInput">Target</label>
+          <input id="mpTargetInput" class="target__input" type="number" min="0.5" step="0.1" value="5" />
+          <span class="target__unit">sec</span>
+        </div>
+        <ul id="mpPlayers" class="mp-players"></ul>
+        <button id="mpStartBtn" class="btn btn--primary mp-wide" type="button" hidden>Start game</button>
+        <div id="mpLobbyHint" class="mp-sub"></div>
+        <button id="mpLeaveBtn" class="mp-text-btn" type="button">Leave</button>
+      </div>
+
+      <!-- Play -->
+      <div id="mpPlay" class="mp-screen" hidden>
+        <div id="mpRoleCard" class="mp-role"></div>
+        <div id="mpTurnInfo" class="mp-turn"></div>
+        <div class="display"><span id="mpTime" class="display__time">00:00<span class="display__ms">.00</span></span></div>
+        <div id="mpPlayStatus" class="status"></div>
+        <button id="mpStartStop" class="btn btn--primary mp-wide" type="button" hidden>Start</button>
+        <div id="mpWaiting" class="mp-sub"></div>
+      </div>
+
+      <!-- Vote -->
+      <div id="mpVote" class="mp-screen" hidden>
+        <div class="mp-label">Who's the impostor?</div>
+        <ul id="mpVoteList" class="mp-players mp-vote"></ul>
+        <div id="mpVoteStatus" class="mp-sub"></div>
+      </div>
+
+      <!-- Results -->
+      <div id="mpResults" class="mp-screen" hidden>
+        <div id="mpResultsTitle" class="mp-label"></div>
+        <div id="mpResultsBody" class="mp-results-body"></div>
+        <button id="mpPlayAgain" class="btn btn--primary mp-wide" type="button" hidden>Play again</button>
+        <button id="mpResultsLeave" class="mp-text-btn" type="button">Leave game</button>
+      </div>
+    </div><!-- /onlineView -->
   </main>
 
   <script src="script.js"></script>
+  <script type="module">
+    import { openOnline, closeOnline } from "./multiplayer.js";
+    document.getElementById("openOnline").addEventListener("click", openOnline);
+    document.getElementById("closeOnline").addEventListener("click", closeOnline);
+  </script>
 </body>
 </html>
