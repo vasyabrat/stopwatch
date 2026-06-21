@@ -34,6 +34,10 @@ const els = {
   codeInput: $("mpCodeInput"),
   joinBtn: $("mpJoinBtn"),
   quickJoin: $("mpQuickJoin"),
+  quickPicks: $("mpQuickPicks"),
+  picksList: $("mpPicksList"),
+  shufflePicks: $("mpShufflePicks"),
+  cancelPicks: $("mpCancelPicks"),
   lobbyList: $("mpLobbyList"),
   homeError: $("mpHomeError"),
   lobbyCode: $("mpLobbyCode"),
@@ -289,37 +293,58 @@ function stopLobbiesListener() {
   if (lobbiesUnsub) { lobbiesUnsub(); lobbiesUnsub = null; }
 }
 
+// Open, well-formed lobby codes from a /lobbies snapshot value.
+function openLobbyCodes(data) {
+  return Object.keys(data).filter(
+    (c) => /^[A-Z0-9]{4}$/.test(c) && (Number(data[c].count) || 1) < MAX_PLAYERS);
+}
+
+// One lobby row. `c` is always escaped — never trust a DB key as markup.
+function lobbyRowHtml(c, l) {
+  const emoji = l.mode === "impostor" ? "🕵️" : "🎯";
+  const name = l.mode === "impostor" ? "Impostor" : "Closest Wins";
+  const count = Number(l.count) || 1;
+  return '<li><span class="pname">' + escapeHtml(l.host) + "</span>" +
+    '<span class="mp-lobby-meta">' + emoji + " " + name + " · " + count + "/" + MAX_PLAYERS + "</span>" +
+    '<button class="joinopen btn btn--ghost" data-code="' + escapeHtml(c) + '">Join</button></li>';
+}
+
 function renderLobbies(snap) {
   const data = snap.val() || {};
-  const codes = Object.keys(data).filter((c) => (data[c].count || 1) < MAX_PLAYERS);
+  const codes = openLobbyCodes(data);
   if (!codes.length) {
     els.lobbyList.innerHTML = '<li class="mp-empty">No public games right now — start one above!</li>';
     return;
   }
-  // Newest first.
-  codes.sort((a, b) => (data[b].createdAt || 0) - (data[a].createdAt || 0));
-  els.lobbyList.innerHTML = codes
-    // Only render well-formed codes — never trust a DB key as markup.
-    .filter((c) => /^[A-Z0-9]{4}$/.test(c))
-    .map((c) => {
-      const l = data[c];
-      const emoji = l.mode === "impostor" ? "🕵️" : "🎯";
-      const name = l.mode === "impostor" ? "Impostor" : "Closest Wins";
-      const count = Number(l.count) || 1;
-      return '<li><span class="pname">' + escapeHtml(l.host) + "</span>" +
-        '<span class="mp-lobby-meta">' + emoji + " " + name + " · " +
-        count + "/" + MAX_PLAYERS + "</span>" +
-        '<button class="joinopen btn btn--ghost" data-code="' + escapeHtml(c) + '">Join</button></li>';
-    }).join("");
+  codes.sort((a, b) => (data[b].createdAt || 0) - (data[a].createdAt || 0)); // newest first
+  els.lobbyList.innerHTML = codes.map((c) => lobbyRowHtml(c, data[c])).join("");
 }
 
+// "Quick join" now offers a handful of random open games to choose from
+// instead of dropping you straight into one.
+const QUICK_PICK_COUNT = 4;
 async function quickJoin() {
   if (!requireReady()) return;
   const snap = await get(ref(db, "lobbies"));
   const data = snap.val() || {};
-  const codes = Object.keys(data).filter((c) => (data[c].count || 1) < MAX_PLAYERS);
-  if (!codes.length) { els.homeError.textContent = "No open games right now — start one!"; return; }
-  joinGame(codes[Math.floor(Math.random() * codes.length)]);
+  const codes = openLobbyCodes(data);
+  if (!codes.length) {
+    els.quickPicks.hidden = true;
+    els.homeError.textContent = "No open games right now — start one!";
+    return;
+  }
+  els.homeError.textContent = "";
+  renderQuickPicks(shuffle(codes).slice(0, QUICK_PICK_COUNT), data);
+  els.quickPicks.hidden = false;
+}
+
+function renderQuickPicks(codes, data) {
+  els.picksList.innerHTML = codes.map((c) => lobbyRowHtml(c, data[c])).join("");
+}
+
+function closeQuickPicks() {
+  els.quickPicks.hidden = true;
+  els.picksList.innerHTML = "";
 }
 
 // Cross-device beep: every client plays the active player's start/stop.
@@ -351,6 +376,7 @@ async function leaveGame(skipRemove) {
   code = null; isHost = false; game = null; myRole = null;
   turnRunning = false; lastSignalId = null;
   titleEl.textContent = "ONLINE";
+  closeQuickPicks();
   showScreen("mpHome");
   startLobbiesListener(); // back on the home screen — show open games again
 }
@@ -666,8 +692,16 @@ function bind() {
       document.querySelectorAll("#mpHome .vis").forEach((x) => x.classList.toggle("is-active", x === b));
     }));
 
-  // Join an open game straight from the public list, or a random one.
+  // Quick join shows a few random games to choose from.
   els.quickJoin.addEventListener("click", quickJoin);
+  els.shufflePicks.addEventListener("click", quickJoin); // re-roll the options
+  els.cancelPicks.addEventListener("click", closeQuickPicks);
+  els.picksList.addEventListener("click", (e) => {
+    const btn = e.target.closest(".joinopen");
+    if (btn && requireReady()) joinGame(btn.dataset.code);
+  });
+
+  // Join an open game straight from the full public list.
   els.lobbyList.addEventListener("click", (e) => {
     const btn = e.target.closest(".joinopen");
     if (btn && requireReady()) joinGame(btn.dataset.code);

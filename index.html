@@ -89,7 +89,17 @@
         </button>
 
         <div class="mp-label">Public games — join anyone</div>
-        <button id="mpQuickJoin" class="btn btn--ghost mp-wide" type="button">⚡ Quick join a random game</button>
+        <button id="mpQuickJoin" class="btn btn--ghost mp-wide" type="button">⚡ Quick join — pick a game</button>
+        <div id="mpQuickPicks" class="mp-quickpicks" hidden>
+          <div class="mp-quickpicks__head">
+            <span>Pick a game to join</span>
+            <span class="mp-quickpicks__actions">
+              <button id="mpShufflePicks" class="mp-text-btn" type="button">↻ Shuffle</button>
+              <button id="mpCancelPicks" class="mp-text-btn" type="button">Cancel</button>
+            </span>
+          </div>
+          <ul id="mpPicksList" class="mp-players mp-lobby-list"></ul>
+        </div>
         <ul id="mpLobbyList" class="mp-players mp-lobby-list"></ul>
 
         <div class="mp-or"><span>or join with a code</span></div>

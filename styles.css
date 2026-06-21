@@ -435,6 +435,28 @@ body.running .status { color: var(--blue); }
 .vis.is-active { border-color: var(--blue); background: rgba(61, 169, 252, 0.12); color: var(--blue-bright); }
 .vis:focus-visible { outline: 2px solid var(--blue-bright); outline-offset: 2px; }
 
+.mp-quickpicks {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px;
+  border-radius: 14px;
+  border: 1px solid rgba(61, 169, 252, 0.35);
+  background: rgba(61, 169, 252, 0.06);
+  animation: fadeIn 0.25s ease;
+}
+.mp-quickpicks__head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 12px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--silver-dim);
+}
+.mp-quickpicks__actions { display: flex; gap: 6px; }
+.mp-quickpicks__actions .mp-text-btn { padding: 2px 6px; font-size: 12px; }
+
 .mp-lobby-list { gap: 8px; }
 .mp-lobby-list li { justify-content: space-between; gap: 10px; }
 .mp-lobby-meta { font-size: 12px; color: var(--silver-dim); margin-left: auto; }
