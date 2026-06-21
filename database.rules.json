@@ -8,9 +8,9 @@
     },
     "roles": {
       "$code": {
+        ".write": "auth != null",
         "$uid": {
-          ".read": "auth != null && auth.uid == $uid",
-          ".write": "auth != null"
+          ".read": "auth != null && auth.uid == $uid"
         }
       }
     }

@@ -33,7 +33,7 @@
     </div>
 
     <section class="display" aria-live="polite" aria-atomic="true">
-      <span id="time" class="display__time">00:00<span class="display__ms">.00</span></span>
+      <span class="display__time"><span id="timeMain">00:00</span><span id="timeMs" class="display__ms">.00</span></span>
     </section>
 
     <div class="status" id="status">Ready</div>
@@ -69,31 +69,27 @@
         <p class="mp-sub">Add your free Firebase keys in <code>firebase-config.js</code> (see the README → "Online multiplayer setup"), then refresh this page.</p>
       </div>
 
-      <!-- Home -->
+      <!-- Home: name + create either game + join, all on one screen -->
       <div id="mpHome" class="mp-screen" hidden>
         <label class="mp-label" for="mpName">Your name</label>
-        <input id="mpName" class="mp-input" maxlength="14" placeholder="e.g. Danil" autocomplete="off" />
-        <button id="mpCreateBtn" class="btn btn--primary mp-wide" type="button">Create game</button>
-        <div class="mp-or"><span>or join one</span></div>
-        <div class="mp-join-row">
-          <input id="mpCodeInput" class="mp-input mp-code-input" maxlength="4" placeholder="CODE" autocomplete="off" />
-          <button id="mpJoinBtn" class="btn btn--ghost" type="button">Join</button>
-        </div>
-        <div id="mpHomeError" class="mp-error" aria-live="polite"></div>
-      </div>
+        <input id="mpName" class="mp-input" maxlength="14" placeholder="Type your name" autocomplete="off" />
 
-      <!-- Create: choose game type -->
-      <div id="mpCreate" class="mp-screen" hidden>
-        <div class="mp-label">Choose a game</div>
+        <div class="mp-label">Start a new game</div>
         <button class="gametype" type="button" data-mode="impostor">
           <span class="gametype__name">🕵️ Impostor</span>
           <span class="gametype__desc">Everyone gets the same secret number — except one. Go blind, one by one. Listen, then vote out the impostor.</span>
         </button>
         <button class="gametype" type="button" data-mode="closest">
           <span class="gametype__name">🎯 Closest Wins</span>
-          <span class="gametype__desc">Everyone aims for the same target time, blind. Closest guess wins.</span>
+          <span class="gametype__desc">Everyone aims for the same random target time, blind. Closest guess wins.</span>
         </button>
-        <button id="mpCreateBack" class="mp-text-btn" type="button">← Back</button>
+
+        <div class="mp-or"><span>or join a friend's game</span></div>
+        <div class="mp-join-row">
+          <input id="mpCodeInput" class="mp-input mp-code-input" maxlength="4" placeholder="CODE" autocomplete="off" />
+          <button id="mpJoinBtn" class="btn btn--ghost" type="button">Join</button>
+        </div>
+        <div id="mpHomeError" class="mp-error" aria-live="polite"></div>
       </div>
 
       <!-- Lobby -->
@@ -102,11 +98,6 @@
           <button id="mpCopyCode" class="mp-copy" type="button" title="Copy code">⧉</button>
         </div>
         <div id="mpGameTypeLabel" class="mp-gametype-label"></div>
-        <div id="mpTargetSetup" class="mp-target-setup" hidden>
-          <label for="mpTargetInput">Target</label>
-          <input id="mpTargetInput" class="target__input" type="number" min="0.5" step="0.1" value="5" />
-          <span class="target__unit">sec</span>
-        </div>
         <ul id="mpPlayers" class="mp-players"></ul>
         <button id="mpStartBtn" class="btn btn--primary mp-wide" type="button" hidden>Start game</button>
         <div id="mpLobbyHint" class="mp-sub"></div>
@@ -132,7 +123,8 @@
 
       <!-- Results -->
       <div id="mpResults" class="mp-screen" hidden>
-        <div id="mpResultsTitle" class="mp-label"></div>
+        <div id="mpRevealIcon" class="mp-reveal-icon" hidden></div>
+        <div id="mpResultsTitle" class="mp-results-title"></div>
         <div id="mpResultsBody" class="mp-results-body"></div>
         <button id="mpPlayAgain" class="btn btn--primary mp-wide" type="button" hidden>Play again</button>
         <button id="mpResultsLeave" class="mp-text-btn" type="button">Leave game</button>

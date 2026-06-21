@@ -200,13 +200,21 @@ body.running .dot {
   color: var(--silver-bright);
   text-shadow: 0 0 24px rgba(61, 169, 252, 0.25);
   font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1;
+  display: inline-flex;
+  align-items: baseline;
+  justify-content: center;
 }
-
+/* Fixed-width digit columns so the centered clock never shifts while running. */
+#timeMain { display: inline-block; }
 .display__ms {
   font-size: 0.42em;
   color: var(--blue-bright);
   letter-spacing: 1px;
   margin-left: 2px;
+  display: inline-block;
+  width: 1.9em;
+  text-align: left;
 }
 
 .status {
@@ -500,6 +508,21 @@ body.running .status { color: var(--blue); }
 .mp-turn { font-size: 12px; letter-spacing: 2px; text-transform: uppercase; color: var(--silver-dim); }
 
 /* Results */
+.mp-reveal-icon {
+  font-size: 72px;
+  line-height: 1;
+  text-align: center;
+  margin: 4px 0 2px;
+  filter: drop-shadow(0 6px 20px rgba(61, 169, 252, 0.35));
+  animation: pop 0.45s cubic-bezier(0.2, 1.4, 0.4, 1);
+}
+@keyframes pop { from { transform: scale(0.3); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+.mp-results-title { font-size: 17px; font-weight: 600; color: var(--silver-bright); line-height: 1.45; }
+.mp-results-title strong { color: var(--blue-bright); }
+.mp-secret {
+  margin-top: 6px; font-size: 13px; font-weight: 500; letter-spacing: 1px;
+  text-transform: uppercase; color: var(--silver-dim);
+}
 .mp-results-body { display: flex; flex-direction: column; gap: 8px; }
 .mp-rank {
   display: flex; justify-content: space-between; align-items: center;

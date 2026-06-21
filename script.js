@@ -2,7 +2,9 @@
   "use strict";
 
   // ---- Elements ----
-  const timeEl = document.getElementById("time");
+  const timeWrap = document.querySelector(".display__time");
+  const timeMainEl = document.getElementById("timeMain");
+  const timeMsEl = document.getElementById("timeMs");
   const statusEl = document.getElementById("status");
   const titleEl = document.getElementById("title");
   const startStopBtn = document.getElementById("startStop");
@@ -20,7 +22,12 @@
 
   const PLAY = '<polygon points="6,4 20,12 6,20" />';
   const PAUSE = '<rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/>';
-  const MASK = '••<span class="display__ms">••</span>';
+
+  function showMask() {
+    timeWrap.classList.add("is-hidden");
+    timeMainEl.textContent = "•• ••";
+    timeMsEl.textContent = "";
+  }
 
   // ---- State ----
   let startTime = 0;       // timestamp the current run began
@@ -93,7 +100,9 @@
 
   function render(ms) {
     const f = format(ms);
-    timeEl.innerHTML = f.main + '<span class="display__ms">' + f.ms + "</span>";
+    // Update text nodes only (no innerHTML churn) so the running clock never jitters.
+    if (timeMainEl.textContent !== f.main) timeMainEl.textContent = f.main;
+    timeMsEl.textContent = f.ms;
   }
 
   function tick() {
@@ -152,8 +161,7 @@
     if (gameMode) {
       // Blind round: hide the time, rely on sound/feel.
       resultEl.hidden = true;
-      timeEl.classList.add("is-hidden");
-      timeEl.innerHTML = MASK;
+      showMask();
       statusEl.textContent = "Listening…";
     } else {
       statusEl.textContent = "Running";
@@ -174,7 +182,7 @@
     stopSound();
 
     if (gameMode) {
-      timeEl.classList.remove("is-hidden");
+      timeWrap.classList.remove("is-hidden");
       render(elapsed);              // reveal the hidden time
       startLabel.textContent = "Start";
       statusEl.textContent = "Result";
@@ -191,7 +199,7 @@
     running = false;
     cancelAnimationFrame(rafId);
     elapsed = 0;
-    timeEl.classList.remove("is-hidden");
+    timeWrap.classList.remove("is-hidden");
     render(0);
     resultEl.hidden = true;
 
@@ -217,7 +225,7 @@
     running = false;
     cancelAnimationFrame(rafId);
     elapsed = 0;
-    timeEl.classList.remove("is-hidden");
+    timeWrap.classList.remove("is-hidden");
     render(0);
     resultEl.hidden = true;
     document.body.classList.remove("running");

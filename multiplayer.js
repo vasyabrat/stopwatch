@@ -2,10 +2,10 @@
 // Online multiplayer: lobbies with codes, up to 10 players.
 //   • Impostor   — everyone gets the same secret number except one (the
 //                  impostor). Players go one-by-one, blind (the timer is never
-//                  shown). Listen to the start/stop beeps and vote who the
-//                  impostor is.
-//   • Closest    — everyone aims for the same target time, blind. Times are
-//                  revealed at the end; closest to the target wins.
+//                  shown). Every device beeps when the active player starts and
+//                  stops, so you can play even in different rooms. Then vote.
+//   • Closest    — everyone aims for the same *random* target time, blind.
+//                  Times are revealed at the end; closest to the target wins.
 // Backed by Firebase Realtime Database + anonymous auth (client-only).
 // ===========================================================================
 
@@ -31,16 +31,12 @@ const screens = Array.from(document.querySelectorAll("#onlineView .mp-screen"));
 const els = {
   notice: $("mpNotConfigured"),
   name: $("mpName"),
-  createBtn: $("mpCreateBtn"),
   codeInput: $("mpCodeInput"),
   joinBtn: $("mpJoinBtn"),
   homeError: $("mpHomeError"),
-  createBack: $("mpCreateBack"),
   lobbyCode: $("mpLobbyCode"),
   copyCode: $("mpCopyCode"),
   gameTypeLabel: $("mpGameTypeLabel"),
-  targetSetup: $("mpTargetSetup"),
-  targetInput: $("mpTargetInput"),
   players: $("mpPlayers"),
   startBtn: $("mpStartBtn"),
   lobbyHint: $("mpLobbyHint"),
@@ -53,6 +49,7 @@ const els = {
   waiting: $("mpWaiting"),
   voteList: $("mpVoteList"),
   voteStatus: $("mpVoteStatus"),
+  revealIcon: $("mpRevealIcon"),
   resultsTitle: $("mpResultsTitle"),
   resultsBody: $("mpResultsBody"),
   playAgain: $("mpPlayAgain"),
@@ -61,21 +58,42 @@ const els = {
 
 // ---- Audio (mirrors the solo chirps) ----
 let audioCtx = null;
+function ensureCtx() {
+  if (!audioCtx) {
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if (AC) audioCtx = new AC();
+  }
+  return audioCtx;
+}
+// Browsers (especially iOS Safari) start the audio context suspended and only
+// allow it to resume from a user gesture. Unlock it on the first tap so that
+// later beeps — including ones triggered remotely — actually play.
+function unlockAudio() {
+  const ac = ensureCtx();
+  if (!ac) return;
+  if (ac.state === "suspended") ac.resume();
+  try {
+    const buf = ac.createBuffer(1, 1, 22050);
+    const src = ac.createBufferSource();
+    src.buffer = buf;
+    src.connect(ac.destination);
+    src.start(0);
+  } catch (_) { /* ignore */ }
+}
 function beep(freq, duration, type) {
   try {
-    const AC = window.AudioContext || window.webkitAudioContext;
-    if (!AC) return;
-    if (!audioCtx) audioCtx = new AC();
-    if (audioCtx.state === "suspended") audioCtx.resume();
-    const osc = audioCtx.createOscillator();
-    const gain = audioCtx.createGain();
+    const ac = ensureCtx();
+    if (!ac) return;
+    if (ac.state === "suspended") ac.resume();
+    const osc = ac.createOscillator();
+    const gain = ac.createGain();
     osc.type = type || "sine";
     osc.frequency.value = freq;
-    const now = audioCtx.currentTime;
+    const now = ac.currentTime;
     gain.gain.setValueAtTime(0, now);
-    gain.gain.linearRampToValueAtTime(0.25, now + 0.01);
+    gain.gain.linearRampToValueAtTime(0.3, now + 0.01);
     gain.gain.exponentialRampToValueAtTime(0.0001, now + duration);
-    osc.connect(gain).connect(audioCtx.destination);
+    osc.connect(gain).connect(ac.destination);
     osc.start(now);
     osc.stop(now + duration + 0.02);
   } catch (_) { /* ignore */ }
@@ -89,9 +107,7 @@ function showScreen(id) {
 }
 function makeCode() {
   let c = "";
-  for (let i = 0; i < CODE_LEN; i++) {
-    c += CODE_CHARS[Math.floor(Math.random() * CODE_CHARS.length)];
-  }
+  for (let i = 0; i < CODE_LEN; i++) c += CODE_CHARS[Math.floor(Math.random() * CODE_CHARS.length)];
   return c;
 }
 function shuffle(arr) {
@@ -108,6 +124,10 @@ function fmt(ms) {
   const cc = Math.floor((t % 1000) / 10);
   return s + "." + String(cc).padStart(2, "0") + "s";
 }
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, (c) =>
+    ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+}
 const MASK = '•&nbsp;•<span class="display__ms">&nbsp;••</span>';
 
 // ---- State ----
@@ -116,11 +136,11 @@ let uid = null;
 let myName = "";
 let code = null;          // current game code
 let isHost = false;
-let pendingMode = null;   // chosen on the create screen
 let game = null;          // latest snapshot of games/{code}
 let myRole = null;        // latest snapshot of roles/{code}/{uid}
 let gameUnsub = null;
 let roleUnsub = null;
+let lastSignalId = null;  // de-dupes the cross-device start/stop beeps
 
 // Local turn timing (this device only)
 let turnRunning = false;
@@ -131,13 +151,7 @@ function initFirebase() {
   const app = initializeApp(firebaseConfig);
   db = getDatabase(app);
   const auth = getAuth(app);
-  onAuthStateChanged(auth, (user) => {
-    if (user) {
-      uid = user.uid;
-      els.createBtn.disabled = false;
-      els.joinBtn.disabled = false;
-    }
-  });
+  onAuthStateChanged(auth, (user) => { if (user) uid = user.uid; });
   signInAnonymously(auth).catch((e) => {
     els.homeError.textContent = "Couldn't connect: " + (e.code || e.message);
   });
@@ -148,7 +162,6 @@ async function createGame(mode) {
   if (!uid) return;
   myName = (els.name.value || "Player").trim().slice(0, 14);
 
-  // Find an unused code.
   let candidate;
   for (let i = 0; i < 8; i++) {
     candidate = makeCode();
@@ -157,6 +170,7 @@ async function createGame(mode) {
   }
   code = candidate;
   isHost = true;
+  lastSignalId = null;
 
   await set(ref(db, "games/" + code), {
     host: uid,
@@ -168,10 +182,8 @@ async function createGame(mode) {
     players: { [uid]: { name: myName, joinedAt: Date.now() } },
   });
 
-  // Host disconnecting tears down the whole game (simple cleanup).
   onDisconnect(ref(db, "games/" + code)).remove();
   onDisconnect(ref(db, "roles/" + code)).remove();
-
   subscribe();
 }
 
@@ -194,9 +206,8 @@ async function joinGame() {
 
   code = wanted;
   isHost = false;
-  await set(ref(db, "games/" + code + "/players/" + uid), {
-    name: myName, joinedAt: Date.now(),
-  });
+  lastSignalId = null;
+  await set(ref(db, "games/" + code + "/players/" + uid), { name: myName, joinedAt: Date.now() });
   onDisconnect(ref(db, "games/" + code + "/players/" + uid)).remove();
   subscribe();
 }
@@ -205,16 +216,25 @@ function subscribe() {
   els.homeError.textContent = "";
   gameUnsub = onValue(ref(db, "games/" + code), (snap) => {
     game = snap.val();
-    if (!game) { // game was torn down (host left)
-      alert("The game was closed by the host.");
-      return leaveGame(true);
-    }
+    if (!game) { alert("The game was closed by the host."); return leaveGame(true); }
+    handleSignal(game.signal);
     render();
   });
   roleUnsub = onValue(ref(db, "roles/" + code + "/" + uid), (snap) => {
     myRole = snap.val();
     render();
   });
+}
+
+// Cross-device beep: every client plays the active player's start/stop.
+function handleSignal(sig) {
+  if (!sig) return;
+  if (lastSignalId === null) { lastSignalId = sig.id; return; } // don't replay on first load
+  if (sig.id === lastSignalId) return;
+  lastSignalId = sig.id;
+  if (sig.by === uid) return;            // the actor already heard it locally
+  if (sig.kind === "start") startSound();
+  else if (sig.kind === "stop") stopSound();
 }
 
 async function leaveGame(skipRemove) {
@@ -232,12 +252,16 @@ async function leaveGame(skipRemove) {
     } catch (_) { /* ignore */ }
   }
   code = null; isHost = false; game = null; myRole = null;
-  pendingMode = null;
+  turnRunning = false; lastSignalId = null;
   titleEl.textContent = "ONLINE";
   showScreen("mpHome");
 }
 
 // =====================  HOST: START ROUND  =====================
+function randomTarget() {
+  return Math.round((2 + Math.random() * 7) * 10) / 10; // 2.0–9.0s
+}
+
 async function startRound() {
   const ids = Object.keys(game.players || {});
   if (ids.length < 2) { els.lobbyHint.textContent = "Need at least 2 players."; return; }
@@ -249,19 +273,19 @@ async function startRound() {
   updates["games/" + code + "/results"] = null;
   updates["games/" + code + "/votes"] = null;
   updates["games/" + code + "/impostor"] = null;
+  updates["games/" + code + "/secret"] = null;
+  updates["games/" + code + "/signal"] = null;
+  updates["games/" + code + "/state"] = "playing";
 
   if (game.mode === "impostor") {
-    const secret = Math.round((2 + Math.random() * 7) * 10) / 10; // 2.0–9.0s
+    const secret = randomTarget();
     const impostor = ids[Math.floor(Math.random() * ids.length)];
     ids.forEach((pid) => {
       updates["roles/" + code + "/" + pid] =
         pid === impostor ? { role: "impostor" } : { role: "crew", number: secret };
     });
-    updates["games/" + code + "/state"] = "playing";
   } else {
-    const target = parseFloat(els.targetInput.value);
-    updates["games/" + code + "/target"] = isNaN(target) ? 5 : target;
-    updates["games/" + code + "/state"] = "playing";
+    updates["games/" + code + "/target"] = randomTarget();
   }
   await update(ref(db), updates);
 }
@@ -272,8 +296,13 @@ function myTurn() {
   return game.turnOrder[game.currentTurnIndex] === uid;
 }
 
+function broadcast(kind) {
+  set(ref(db, "games/" + code + "/signal"), { kind, by: uid, id: Date.now() });
+}
+
 function onStartStop() {
   if (!myTurn()) return;
+  unlockAudio();
   if (!turnRunning) {
     turnRunning = true;
     turnStart = performance.now();
@@ -281,12 +310,14 @@ function onStartStop() {
     els.startStop.classList.add("is-stop");
     els.playStatus.textContent = "Listening…";
     startSound();
+    broadcast("start");
   } else {
     turnRunning = false;
     const elapsed = performance.now() - turnStart;
     els.startStop.classList.remove("is-stop");
     els.startStop.disabled = true;
     stopSound();
+    broadcast("stop");
     advanceTurn(elapsed);
   }
 }
@@ -295,9 +326,8 @@ async function advanceTurn(elapsedMs) {
   const order = game.turnOrder;
   const next = game.currentTurnIndex + 1;
   const updates = {};
-  if (game.mode === "closest") {
-    updates["games/" + code + "/results/" + uid] = Math.round(elapsedMs);
-  }
+  // Record every player's time (revealed at the end — even in Impostor).
+  updates["games/" + code + "/results/" + uid] = Math.round(elapsedMs);
   if (next >= order.length) {
     updates["games/" + code + "/state"] = game.mode === "impostor" ? "voting" : "results";
   } else {
@@ -327,25 +357,20 @@ function render() {
     titleEl.textContent = game.mode === "impostor" ? "IMPOSTOR LOBBY" : "LOBBY";
     showScreen("mpLobby");
     els.lobbyCode.textContent = code;
-    els.gameTypeLabel.textContent =
-      game.mode === "impostor" ? "🕵️ Impostor" : "🎯 Closest Wins";
-    els.targetSetup.hidden = !(isHost && game.mode === "closest");
+    els.gameTypeLabel.textContent = game.mode === "impostor" ? "🕵️ Impostor" : "🎯 Closest Wins";
 
     const ids = Object.keys(players);
-    els.players.innerHTML = ids
-      .map((id) => {
-        const tags = [];
-        if (id === game.host) tags.push('<span class="tag">host</span>');
-        if (id === uid) tags.push('<span class="tag tag--you">you</span>');
-        return '<li><span class="pname">' + escapeHtml(players[id].name) + "</span>" +
-          tags.join("") + "</li>";
-      })
-      .join("");
+    els.players.innerHTML = ids.map((id) => {
+      const tags = [];
+      if (id === game.host) tags.push('<span class="tag">host</span>');
+      if (id === uid) tags.push('<span class="tag tag--you">you</span>');
+      return '<li><span class="pname">' + escapeHtml(players[id].name) + "</span>" + tags.join("") + "</li>";
+    }).join("");
 
     els.startBtn.hidden = !isHost;
     els.lobbyHint.textContent = isHost
-      ? ids.length < 2 ? "Waiting for players to join (need 2+)…"
-        : "Ready — " + ids.length + "/" + MAX_PLAYERS + " players."
+      ? (ids.length < 2 ? "Waiting for players to join (need 2+)…"
+        : "Ready — " + ids.length + "/" + MAX_PLAYERS + " players.")
       : "Waiting for the host to start…";
     return;
   }
@@ -355,7 +380,6 @@ function render() {
     showScreen("mpPlay");
     els.time.innerHTML = MASK;
 
-    // Role / target card
     if (game.mode === "impostor") {
       if (myRole && myRole.role === "impostor") {
         els.roleCard.className = "mp-role mp-role--impostor";
@@ -369,13 +393,12 @@ function render() {
       }
     } else {
       els.roleCard.className = "mp-role mp-role--crew";
-      els.roleCard.innerHTML = "Target<br><strong>" + (game.target) + "s</strong>";
+      els.roleCard.innerHTML = "Target<br><strong>" + game.target + "s</strong>";
     }
 
     const order = game.turnOrder || [];
     const currentId = order[game.currentTurnIndex];
-    els.turnInfo.textContent =
-      "Turn " + (game.currentTurnIndex + 1) + " of " + order.length;
+    els.turnInfo.textContent = "Turn " + (game.currentTurnIndex + 1) + " of " + order.length;
 
     if (myTurn()) {
       els.startStop.hidden = false;
@@ -399,17 +422,14 @@ function render() {
     showScreen("mpVote");
     const ids = Object.keys(players);
     const myVote = (game.votes || {})[uid];
-    els.voteList.innerHTML = ids
-      .map((id) => {
-        const voted = myVote === id ? " is-picked" : "";
-        const disabled = myVote ? " disabled" : "";
-        const me = id === uid ? " (you)" : "";
-        return '<li><button class="votebtn' + voted + '" data-id="' + id + '"' + disabled +
-          ">" + escapeHtml(players[id].name) + me + "</button></li>";
-      })
-      .join("");
-    const votes = game.votes || {};
-    const count = Object.keys(votes).length;
+    els.voteList.innerHTML = ids.map((id) => {
+      const voted = myVote === id ? " is-picked" : "";
+      const disabled = myVote ? " disabled" : "";
+      const me = id === uid ? " (you)" : "";
+      return '<li><button class="votebtn' + voted + '" data-id="' + id + '"' + disabled + ">" +
+        escapeHtml(players[id].name) + me + "</button></li>";
+    }).join("");
+    const count = Object.keys(game.votes || {}).length;
     els.voteStatus.textContent = myVote
       ? "Vote locked. " + count + "/" + ids.length + " voted…"
       : "Tap the player you think had no number.";
@@ -427,7 +447,9 @@ function render() {
 
 function renderClosestResults(players, names) {
   titleEl.textContent = "RESULTS";
-  els.resultsTitle.textContent = "🎯 Closest to " + game.target + "s wins";
+  els.revealIcon.hidden = false;
+  els.revealIcon.textContent = "🎯";
+  els.resultsTitle.innerHTML = "Closest to <strong>" + game.target + "s</strong> wins";
   const results = game.results || {};
   const rows = Object.keys(results).map((id) => {
     const secs = results[id] / 1000;
@@ -445,51 +467,56 @@ function renderClosestResults(players, names) {
 
 function renderImpostorResults(players, names) {
   titleEl.textContent = "REVEAL";
-  // The impostor's own client reveals their identity here (no one else knew).
+  // The impostor's own client reveals their identity; a crew client reveals the
+  // secret number — no single device knew both, keeping the round fair.
   if (myRole && myRole.role === "impostor" && !game.impostor) {
     set(ref(db, "games/" + code + "/impostor"), uid);
   }
+  if (myRole && myRole.role === "crew" && game.secret == null && myRole.number != null) {
+    set(ref(db, "games/" + code + "/secret"), myRole.number);
+  }
+
   const votes = game.votes || {};
   const tally = {};
   Object.values(votes).forEach((sid) => { tally[sid] = (tally[sid] || 0) + 1; });
-
   let topId = null, topN = -1;
   Object.keys(tally).forEach((id) => { if (tally[id] > topN) { topN = tally[id]; topId = id; } });
 
   const impostorId = game.impostor;
-  let headline;
+  let icon, headline;
   if (!impostorId) {
-    headline = "The impostor left before the reveal.";
-  } else if (topId === impostorId) {
-    headline = "✅ Caught! The group voted out <strong>" + escapeHtml(names(impostorId)) + "</strong> — the impostor.";
+    icon = "🕵️"; headline = "The impostor left before the reveal.";
+  } else if (topId === impostorId && topN > 0) {
+    icon = "✅"; headline = "Caught! <strong>" + escapeHtml(names(impostorId)) + "</strong> was the impostor.";
   } else {
-    headline = "🕵️ The impostor <strong>" + escapeHtml(names(impostorId)) + "</strong> got away!";
+    icon = "🕵️"; headline = "<strong>" + escapeHtml(names(impostorId)) + "</strong> was the impostor — and got away!";
   }
-  els.resultsTitle.innerHTML = headline;
+  els.revealIcon.hidden = false;
+  els.revealIcon.textContent = icon;
+  els.resultsTitle.innerHTML = headline +
+    (game.secret != null ? '<div class="mp-secret">The number was ' + game.secret + "s</div>" : "");
 
+  const results = game.results || {};
   const ids = Object.keys(players);
   els.resultsBody.innerHTML = ids.map((id) => {
-    const n = tally[id] || 0;
     const isImp = id === impostorId;
+    const t = results[id] != null ? fmt(results[id]) : "—";
+    const v = tally[id] || 0;
     const cls = "mp-rank" + (isImp ? " mp-rank--win" : "");
     const label = (isImp ? "🤫 " : "") + escapeHtml(names(id)) + (isImp ? " (impostor)" : "");
-    return '<div class="' + cls + '"><span>' + label + "</span><span class=\"mp-rank__t\">" +
-      n + (n === 1 ? " vote" : " votes") + "</span></div>";
+    return '<div class="' + cls + '"><span>' + label + '</span><span class="mp-rank__t">' +
+      t + " · " + v + (v === 1 ? " vote" : " votes") + "</span></div>";
   }).join("");
 }
 
 async function playAgain() {
   await update(ref(db, "games/" + code), {
     state: "lobby", currentTurnIndex: 0, turnOrder: null,
-    results: null, votes: null, impostor: null,
+    results: null, votes: null, impostor: null, secret: null, signal: null,
   });
   await remove(ref(db, "roles/" + code));
   turnRunning = false;
-}
-
-function escapeHtml(s) {
-  return String(s).replace(/[&<>"']/g, (c) =>
-    ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  lastSignalId = null;
 }
 
 // =====================  WIRING  =====================
@@ -505,25 +532,24 @@ export function closeOnline() {
   document.getElementById("soloView").hidden = false;
 }
 
-function bind() {
-  if (isConfigured) {
-    els.createBtn.disabled = true;  // enabled once auth is ready
-    els.joinBtn.disabled = true;
-    initFirebase();
-  }
+function requireReady() {
+  if (!uid) { els.homeError.textContent = "Connecting… try again in a second."; return false; }
+  if (!(els.name.value || "").trim()) { els.homeError.textContent = "Enter your name first."; return false; }
+  els.homeError.textContent = "";
+  return true;
+}
 
-  els.createBtn.addEventListener("click", () => {
-    if (!(els.name.value || "").trim()) { els.homeError.textContent = "Enter your name first."; return; }
-    els.homeError.textContent = "";
-    showScreen("mpCreate");
-  });
-  document.querySelectorAll(".gametype").forEach((b) =>
-    b.addEventListener("click", () => { pendingMode = b.dataset.mode; createGame(pendingMode); }));
-  els.createBack.addEventListener("click", () => showScreen("mpHome"));
-  els.joinBtn.addEventListener("click", () => {
-    if (!(els.name.value || "").trim()) { els.homeError.textContent = "Enter your name first."; return; }
-    joinGame();
-  });
+function bind() {
+  if (isConfigured) initFirebase();
+
+  // Unlock audio on the very first interaction anywhere (for cross-device beeps).
+  document.addEventListener("pointerdown", unlockAudio);
+
+  // Home: the two game-type cards create that game directly.
+  document.querySelectorAll("#mpHome .gametype").forEach((b) =>
+    b.addEventListener("click", () => { if (requireReady()) createGame(b.dataset.mode); }));
+
+  els.joinBtn.addEventListener("click", () => { if (requireReady()) joinGame(); });
   els.codeInput.addEventListener("input", () => {
     els.codeInput.value = els.codeInput.value.toUpperCase().replace(/[^A-Z0-9]/g, "");
   });

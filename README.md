@@ -18,11 +18,13 @@ everyone else **joins** with that code from their own phone (up to 10 players). 
 
 - **🕵️ Impostor** — when the host starts, everyone is secretly given the **same number** — except
   one random player, the **impostor**, who gets nothing. Players take turns one-by-one pressing the
-  blind stopwatch (the timer is **never shown**, even after). Since the crew are all aiming for the
-  same secret number, the impostor — who doesn't know it — tends to sound *off*. After everyone has
-  gone, the group **votes** on who the impostor was, and the app reveals the answer.
-- **🎯 Closest Wins** — the host sets a target time; everyone takes a blind turn aiming for it. At
-  the end, all times are revealed and ranked — **closest to the target wins**. 👑
+  blind stopwatch (the timer is **never shown** during play). **Every device beeps** when the active
+  player starts and stops, so you can play even in different rooms. Since the crew are all aiming for
+  the same secret number, the impostor — who doesn't know it — tends to sound *off*. After everyone
+  has gone, the group **votes**, and the reveal shows the impostor, the secret number, and
+  **everyone's times**.
+- **🎯 Closest Wins** — a **random** target time is chosen and shown to everyone; each player takes a
+  blind turn aiming for it. At the end, all times are revealed and ranked — **closest wins**. 👑
 
 > **Privacy note:** secret numbers are stored per-player and each phone can only read its own role.
 > This is a casual party game, so it runs on an honor system — don't go digging in the browser
