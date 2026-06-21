@@ -75,6 +75,10 @@
         <input id="mpName" class="mp-input" maxlength="14" placeholder="Type your name" autocomplete="off" />
 
         <div class="mp-label">Start a new game</div>
+        <div class="mp-vis" role="group" aria-label="Who can join">
+          <button id="visPublic" class="vis is-active" type="button" data-vis="public" title="Anyone can find and join">🌐 Public</button>
+          <button id="visPrivate" class="vis" type="button" data-vis="private" title="Only people with the code can join">🔒 Code only</button>
+        </div>
         <button class="gametype" type="button" data-mode="impostor">
           <span class="gametype__name">🕵️ Impostor</span>
           <span class="gametype__desc">Everyone gets the same secret number — except one. Go blind, one by one. Listen, then vote out the impostor.</span>
@@ -84,7 +88,11 @@
           <span class="gametype__desc">Everyone aims for the same random target time, blind. Closest guess wins.</span>
         </button>
 
-        <div class="mp-or"><span>or join a friend's game</span></div>
+        <div class="mp-label">Public games — join anyone</div>
+        <button id="mpQuickJoin" class="btn btn--ghost mp-wide" type="button">⚡ Quick join a random game</button>
+        <ul id="mpLobbyList" class="mp-players mp-lobby-list"></ul>
+
+        <div class="mp-or"><span>or join with a code</span></div>
         <div class="mp-join-row">
           <input id="mpCodeInput" class="mp-input mp-code-input" maxlength="4" placeholder="CODE" autocomplete="off" />
           <button id="mpJoinBtn" class="btn btn--ghost" type="button">Join</button>

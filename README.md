@@ -14,7 +14,11 @@ Built with plain HTML, CSS, and JavaScript — no build step, no dependencies.
 ## Online multiplayer (lobbies, up to 10 players)
 
 Tap **🎮 Play online with friends**. One person **creates a game** and gets a 4-letter **code**;
-everyone else **joins** with that code from their own phone (up to 10 players). Two game styles:
+everyone else **joins** with that code from their own phone (up to 10 players). You can also make a
+game **🌐 Public** so random people can find and join it without a code — they'll see it in the
+**Public games** list on the home screen, or use **⚡ Quick join** to drop into a random open game.
+Choose **🔒 Code only** when creating if you'd rather keep it to friends with the code. Two game
+styles:
 
 - **🕵️ Impostor** — when the host starts, everyone is secretly given the **same number** — except
   one random player, the **impostor**, who gets nothing. Players take turns one-by-one pressing the

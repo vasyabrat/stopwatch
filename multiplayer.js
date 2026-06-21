@@ -33,6 +33,8 @@ const els = {
   name: $("mpName"),
   codeInput: $("mpCodeInput"),
   joinBtn: $("mpJoinBtn"),
+  quickJoin: $("mpQuickJoin"),
+  lobbyList: $("mpLobbyList"),
   homeError: $("mpHomeError"),
   lobbyCode: $("mpLobbyCode"),
   copyCode: $("mpCopyCode"),
@@ -145,7 +147,9 @@ let game = null;          // latest snapshot of games/{code}
 let myRole = null;        // latest snapshot of roles/{code}/{uid}
 let gameUnsub = null;
 let roleUnsub = null;
+let lobbiesUnsub = null;  // live list of public games on the home screen
 let lastSignalId = null;  // de-dupes the cross-device start/stop beeps
+let myVisibility = "public"; // visibility for games I create
 
 // Local turn timing (this device only)
 let turnRunning = false;
@@ -184,18 +188,20 @@ async function createGame(mode) {
     createdAt: Date.now(),
     target: null,
     currentTurnIndex: 0,
+    public: myVisibility === "public",
     players: { [uid]: { name: myName, joinedAt: Date.now() } },
   });
 
   onDisconnect(ref(db, "games/" + code)).remove();
   onDisconnect(ref(db, "roles/" + code)).remove();
+  onDisconnect(ref(db, "lobbies/" + code)).remove();
   subscribe();
 }
 
-async function joinGame() {
+async function joinGame(explicitCode) {
   if (!uid) return;
   myName = (els.name.value || "Player").trim().slice(0, 14);
-  const wanted = (els.codeInput.value || "").trim().toUpperCase();
+  const wanted = (explicitCode || els.codeInput.value || "").trim().toUpperCase();
   if (wanted.length !== CODE_LEN) {
     els.homeError.textContent = "Enter the " + CODE_LEN + "-character code.";
     return;
@@ -219,16 +225,76 @@ async function joinGame() {
 
 function subscribe() {
   els.homeError.textContent = "";
+  stopLobbiesListener(); // we're leaving the home screen
   gameUnsub = onValue(ref(db, "games/" + code), (snap) => {
     game = snap.val();
     if (!game) { alert("The game was closed by the host."); return leaveGame(true); }
     handleSignal(game.signal);
+    maintainLobbyIndex();
     render();
   });
   roleUnsub = onValue(ref(db, "roles/" + code + "/" + uid), (snap) => {
     myRole = snap.val();
     render();
   });
+}
+
+// ----- Public lobby index (so random players can find open games) -----
+// The host keeps a lightweight `lobbies/{code}` entry in sync: present only
+// while the game is public, in the lobby, and not full.
+function maintainLobbyIndex() {
+  if (!isHost || !game) return;
+  const count = Object.keys(game.players || {}).length;
+  const open = game.public && game.state === "lobby" && count < MAX_PLAYERS;
+  const hostName = (game.players[game.host] || {}).name || "Someone";
+  if (open) {
+    set(ref(db, "lobbies/" + code), {
+      host: hostName, mode: game.mode, count, createdAt: game.createdAt,
+    });
+  } else {
+    remove(ref(db, "lobbies/" + code));
+  }
+}
+
+function startLobbiesListener() {
+  if (lobbiesUnsub || !db) return;
+  lobbiesUnsub = onValue(ref(db, "lobbies"), renderLobbies, () => {
+    // Most likely the updated security rules haven't been published yet.
+    els.lobbyList.innerHTML =
+      '<li class="mp-empty">Public games need the updated database rules (see README).</li>';
+  });
+}
+function stopLobbiesListener() {
+  if (lobbiesUnsub) { lobbiesUnsub(); lobbiesUnsub = null; }
+}
+
+function renderLobbies(snap) {
+  const data = snap.val() || {};
+  const codes = Object.keys(data).filter((c) => (data[c].count || 1) < MAX_PLAYERS);
+  if (!codes.length) {
+    els.lobbyList.innerHTML = '<li class="mp-empty">No public games right now — start one above!</li>';
+    return;
+  }
+  // Newest first.
+  codes.sort((a, b) => (data[b].createdAt || 0) - (data[a].createdAt || 0));
+  els.lobbyList.innerHTML = codes.map((c) => {
+    const l = data[c];
+    const emoji = l.mode === "impostor" ? "🕵️" : "🎯";
+    const name = l.mode === "impostor" ? "Impostor" : "Closest Wins";
+    return '<li><span class="pname">' + escapeHtml(l.host) + "</span>" +
+      '<span class="mp-lobby-meta">' + emoji + " " + name + " · " +
+      (l.count || 1) + "/" + MAX_PLAYERS + "</span>" +
+      '<button class="joinopen btn btn--ghost" data-code="' + c + '">Join</button></li>';
+  }).join("");
+}
+
+async function quickJoin() {
+  if (!requireReady()) return;
+  const snap = await get(ref(db, "lobbies"));
+  const data = snap.val() || {};
+  const codes = Object.keys(data).filter((c) => (data[c].count || 1) < MAX_PLAYERS);
+  if (!codes.length) { els.homeError.textContent = "No open games right now — start one!"; return; }
+  joinGame(codes[Math.floor(Math.random() * codes.length)]);
 }
 
 // Cross-device beep: every client plays the active player's start/stop.
@@ -250,6 +316,7 @@ async function leaveGame(skipRemove) {
       if (isHost) {
         await remove(ref(db, "games/" + code));
         await remove(ref(db, "roles/" + code));
+        await remove(ref(db, "lobbies/" + code));
       } else {
         await onDisconnect(ref(db, "games/" + code + "/players/" + uid)).cancel();
         await remove(ref(db, "games/" + code + "/players/" + uid));
@@ -260,6 +327,7 @@ async function leaveGame(skipRemove) {
   turnRunning = false; lastSignalId = null;
   titleEl.textContent = "ONLINE";
   showScreen("mpHome");
+  startLobbiesListener(); // back on the home screen — show open games again
 }
 
 // =====================  HOST: START ROUND  =====================
@@ -540,10 +608,12 @@ export function openOnline() {
   titleEl.textContent = "ONLINE";
   if (!isConfigured) { showScreen("mpNotConfigured"); return; }
   showScreen("mpHome");
+  startLobbiesListener();
 }
 export function closeOnline() {
   onlineView.hidden = true;
   document.getElementById("soloView").hidden = false;
+  if (!code) stopLobbiesListener(); // keep it running if we're mid-game in the background
 }
 
 function requireReady() {
@@ -562,6 +632,20 @@ function bind() {
   // Home: the two game-type cards create that game directly.
   document.querySelectorAll("#mpHome .gametype").forEach((b) =>
     b.addEventListener("click", () => { if (requireReady()) createGame(b.dataset.mode); }));
+
+  // Public / code-only visibility toggle for games I create.
+  document.querySelectorAll("#mpHome .vis").forEach((b) =>
+    b.addEventListener("click", () => {
+      myVisibility = b.dataset.vis;
+      document.querySelectorAll("#mpHome .vis").forEach((x) => x.classList.toggle("is-active", x === b));
+    }));
+
+  // Join an open game straight from the public list, or a random one.
+  els.quickJoin.addEventListener("click", quickJoin);
+  els.lobbyList.addEventListener("click", (e) => {
+    const btn = e.target.closest(".joinopen");
+    if (btn && requireReady()) joinGame(btn.dataset.code);
+  });
 
   els.joinBtn.addEventListener("click", () => { if (requireReady()) joinGame(); });
   els.codeInput.addEventListener("input", () => {
