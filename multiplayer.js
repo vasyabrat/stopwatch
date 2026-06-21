@@ -107,6 +107,14 @@ function beep(freq, duration, type) {
 const startSound = () => { beep(660, 0.12, "sine"); setTimeout(() => beep(990, 0.16, "sine"), 90); };
 const stopSound = () => { beep(550, 0.12, "sine"); setTimeout(() => beep(360, 0.18, "sine"), 90); };
 
+// Native haptics (no-op on the web; buzzes inside the iOS/Android app).
+const Haptics = (window.Capacitor && window.Capacitor.registerPlugin)
+  ? window.Capacitor.registerPlugin("Haptics") : null;
+function buzz(style) {
+  if (!Haptics) return;
+  try { Haptics.impact({ style: style || "MEDIUM" }); } catch (_) { /* ignore */ }
+}
+
 // ---- Helpers ----
 function showScreen(id) {
   screens.forEach((s) => (s.hidden = s.id !== id));
@@ -434,6 +442,7 @@ function onStartStop() {
     els.startStop.classList.add("is-stop");
     els.playStatus.textContent = "Listening…";
     startSound();
+    buzz("MEDIUM");
     broadcast("start");
   } else {
     turnRunning = false;
@@ -441,6 +450,7 @@ function onStartStop() {
     els.startStop.classList.remove("is-stop");
     els.startStop.disabled = true;
     stopSound();
+    buzz("LIGHT");
     broadcast("stop");
     advanceTurn(elapsed);
   }

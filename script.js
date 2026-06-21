@@ -86,6 +86,14 @@
     setTimeout(() => beep(1319, 0.2, "sine"), 210);
   }
 
+  // ---- Native haptics (no-op on the web; buzzes inside the iOS/Android app) ----
+  const Haptics = (window.Capacitor && window.Capacitor.registerPlugin)
+    ? window.Capacitor.registerPlugin("Haptics") : null;
+  function buzz(style) {
+    if (!Haptics) return;
+    try { Haptics.impact({ style: style || "MEDIUM" }); } catch (_) { /* ignore */ }
+  }
+
   // ---- Time formatting ----
   function format(ms) {
     const totalMs = Math.floor(ms);
@@ -157,6 +165,7 @@
     startLabel.textContent = "Stop";
     startIcon.innerHTML = PAUSE;
     startSound();
+    buzz("MEDIUM");
 
     if (gameMode) {
       // Blind round: hide the time, rely on sound/feel.
@@ -180,6 +189,7 @@
     startStopBtn.setAttribute("aria-label", "Start");
     startIcon.innerHTML = PLAY;
     stopSound();
+    buzz("LIGHT");
 
     if (gameMode) {
       timeWrap.classList.remove("is-hidden");

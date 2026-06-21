@@ -13,6 +13,7 @@ const FILES = [
   "multiplayer.js",
   "firebase-config.js",
   "manifest.webmanifest",
+  "privacy.html",
 ];
 
 await rm(OUT, { recursive: true, force: true });

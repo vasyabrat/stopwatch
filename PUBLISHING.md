@@ -79,7 +79,8 @@ the id can never be changed after a store release).
 6. **Fill the listing** in App Store Connect:
    - **Screenshots** (required): 6.7" iPhone (1290×2796) and 6.5" iPhone at minimum.
      Take them in the iOS Simulator (`Cmd+S` saves a screenshot).
-   - **Description, keywords, support URL, marketing URL** (your Vercel URL works).
+   - **Description, keywords, and a support URL** — host `privacy.html` (see §4) and use that
+     URL, or a `mailto:` link, since there's no public website.
    - **App Privacy:** you collect **player name** + gameplay data via Firebase. Declare:
      *Data linked to user* → "User Content" / "Identifiers" as appropriate, used for **App
      Functionality**, not for tracking. (Be honest — names are typed by users.)
@@ -120,8 +121,8 @@ the id can never be changed after a store release).
 4. **Create the app** at https://play.google.com/console → **Create app**: name, language,
    "App", "Free".
 5. **Complete the required declarations** (Play won't let you publish until these are green):
-   - **Privacy policy URL** (required) — you'll need a hosted privacy policy page. I can
-     generate one you can drop on Vercel.
+   - **Privacy policy URL** (required) — host the included `privacy.html` (see §4) and use
+     that URL.
    - **Data safety** form — declare you collect the typed **name** + gameplay state via
      Firebase; not shared with third parties for ads; not used for tracking.
    - **Content rating** questionnaire, **Target audience**, **Ads = No**.
@@ -132,7 +133,34 @@ the id can never be changed after a store release).
 
 ---
 
-## 4. Shipping updates later
+## 4. Paid app, privacy policy hosting & the website
+
+**Make it a paid app** (no code change — set in each store's dashboard):
+- **App Store Connect** → your app → **Pricing and Availability** → pick a price tier.
+- **Play Console** → your app → **Monetization setup → Pricing** → set **Paid** and a price.
+  ⚠️ Google Play only lets you switch an app **free → paid before its first release**, so
+  decide the model before you publish.
+
+**Host the privacy policy** (required by both stores). The repo includes a ready-made
+`privacy.html`. It's just a legal page — not the playable game — so you can host this single
+file anywhere:
+- **GitHub Pages (free, recommended):** repo → **Settings → Pages** → deploy from `main`.
+  Your policy then lives at `https://vasyabrat.github.io/stopwatch/privacy.html`.
+- Or keep only this page on Vercel, or any static host.
+
+Put that URL in the **Privacy Policy** field of both stores.
+
+**No public website needed.** The native apps bundle their own copy of the web app (`www/`)
+and talk directly to Firebase, so they do **not** depend on the Vercel site. Once the paid
+apps are live you can take the playable website down (Vercel → project → **Settings → delete
+project**, or remove the deployment) without affecting the apps. Just keep the privacy page
+hosted somewhere.
+
+> Firebase note: `firebase-config.js` ships inside the app (as it did on the web). Those keys
+> aren't secrets — your **database rules** are what protect the data, so keep the hardened
+> rules published.
+
+## 5. Shipping updates later
 
 1. Make your web changes (and `git push` for the Vercel site as usual).
 2. Bump the version:
@@ -143,17 +171,13 @@ the id can never be changed after a store release).
 
 ---
 
-## Optional native polish (recommended for App Store acceptance)
+## Native polish — haptics (already wired in)
 
-Add real device haptics so start/stop *buzz* — a genuine native feature:
-
-```bash
-npm install @capacitor/haptics
-npx cap sync
-```
-
-Then I can wire `Haptics.impact()` into the start/stop handlers. Tell me if you want this —
-it improves the game feel and helps clear Apple's "minimum functionality" bar.
+The app already calls native **haptics** so start/stop physically *buzz* on a phone — a real
+native feature (it's a no‑op in a browser, active in the app). It installs automatically with
+`npm install` (the `@capacitor/haptics` dependency) and is included on the next `npx cap sync`.
+This both improves the game feel and strengthens the case against Apple's "minimum
+functionality" rejection (4.2).
 
 ---
 
