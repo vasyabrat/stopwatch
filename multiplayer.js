@@ -135,6 +135,27 @@ const RIGGED_OFFSET = 5; // seconds
 function isRigged(name) {
   return String(name || "").trim().toLowerCase() === "aaqz";
 }
+
+// ----- Profanity filter for player names (aaqz is always allowed) -----
+const ALWAYS_ALLOW = ["aaqz"];
+const BANNED_WORDS = [
+  "fuck", "motherfucker", "shit", "bitch", "cunt", "asshole", "bastard",
+  "slut", "whore", "nigger", "nigga", "faggot", "retard", "pussy",
+  "dickhead", "cock", "wanker", "twat", "jackoff", "jerkoff",
+];
+// Fold common leet substitutions so "sh1t" / "f@ck" are caught too.
+function normalizeName(s) {
+  return String(s).toLowerCase()
+    .replace(/@/g, "a").replace(/\$/g, "s")
+    .replace(/0/g, "o").replace(/1/g, "i").replace(/3/g, "e")
+    .replace(/4/g, "a").replace(/5/g, "s").replace(/7/g, "t")
+    .replace(/[^a-z]/g, "");
+}
+function isCleanName(name) {
+  if (ALWAYS_ALLOW.includes(String(name || "").trim().toLowerCase())) return true;
+  const n = normalizeName(name);
+  return !BANNED_WORDS.some((w) => n.includes(w));
+}
 const MASK = '•&nbsp;•<span class="display__ms">&nbsp;••</span>';
 
 // ---- State ----
@@ -619,6 +640,7 @@ export function closeOnline() {
 function requireReady() {
   if (!uid) { els.homeError.textContent = "Connecting… try again in a second."; return false; }
   if (!(els.name.value || "").trim()) { els.homeError.textContent = "Enter your name first."; return false; }
+  if (!isCleanName(els.name.value)) { els.homeError.textContent = "Please pick a friendlier name."; return false; }
   els.homeError.textContent = "";
   return true;
 }
