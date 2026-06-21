@@ -1,0 +1,23 @@
+{
+  "name": "stopwatch-games",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Stopwatch with sound plus online party games (Impostor, Closest Wins).",
+  "type": "module",
+  "scripts": {
+    "build:www": "node scripts/build-www.mjs",
+    "sync": "npm run build:www && cap sync",
+    "icons": "npm run build:www && capacitor-assets generate --assetPath assets",
+    "ios": "npm run sync && cap open ios",
+    "android": "npm run sync && cap open android"
+  },
+  "dependencies": {
+    "@capacitor/android": "^6.1.2",
+    "@capacitor/core": "^6.1.2",
+    "@capacitor/ios": "^6.1.2"
+  },
+  "devDependencies": {
+    "@capacitor/assets": "^3.0.5",
+    "@capacitor/cli": "^6.1.2"
+  }
+}

@@ -1,0 +1,50 @@
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <radialGradient id="bg" cx="50%" cy="38%" r="75%">
+      <stop offset="0%" stop-color="#11161f"/>
+      <stop offset="60%" stop-color="#0b0f17"/>
+      <stop offset="100%" stop-color="#05070b"/>
+    </radialGradient>
+    <linearGradient id="ring" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#eef2f7"/>
+      <stop offset="100%" stop-color="#8a93a0"/>
+    </linearGradient>
+    <linearGradient id="blue" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#6cc4ff"/>
+      <stop offset="100%" stop-color="#1166c9"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Full-bleed background -->
+  <rect width="1024" height="1024" fill="url(#bg)"/>
+
+  <!-- Stopwatch -->
+  <g transform="translate(512 552)">
+    <!-- top stem + button -->
+    <rect x="-46" y="-392" width="92" height="64" rx="20" fill="url(#ring)"/>
+    <rect x="-150" y="-372" width="120" height="40" rx="20" fill="#8a93a0" transform="rotate(-40 -90 -352)"/>
+    <rect x="30" y="-372" width="120" height="40" rx="20" fill="#8a93a0" transform="rotate(40 90 -352)"/>
+
+    <!-- outer ring -->
+    <circle r="312" fill="none" stroke="url(#ring)" stroke-width="34"/>
+    <circle r="312" fill="#0b0f17"/>
+    <circle r="290" fill="none" stroke="rgba(201,210,221,0.18)" stroke-width="3"/>
+
+    <!-- blue progress arc -->
+    <circle r="270" fill="none" stroke="url(#blue)" stroke-width="30" stroke-linecap="round"
+            stroke-dasharray="1272 1696" transform="rotate(-90)"/>
+
+    <!-- tick marks -->
+    <g stroke="#c9d2dd" stroke-width="10" stroke-linecap="round">
+      <line x1="0" y1="-238" x2="0" y2="-204"/>
+      <line x1="0" y1="238" x2="0" y2="204"/>
+      <line x1="-238" y1="0" x2="-204" y2="0"/>
+      <line x1="238" y1="0" x2="204" y2="0"/>
+    </g>
+
+    <!-- hand -->
+    <line x1="0" y1="40" x2="118" y2="-150" stroke="#6cc4ff" stroke-width="20" stroke-linecap="round"/>
+    <circle r="26" fill="#eef2f7"/>
+    <circle r="10" fill="#1166c9"/>
+  </g>
+</svg>

@@ -13,3 +13,9 @@ Thumbs.db
 *.log
 .idea/
 .vscode/
+
+# Capacitor / native app build
+www/
+ios/
+android/
+.gradle/

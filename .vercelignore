@@ -1,0 +1,10 @@
+# Keep the Vercel deploy a plain static site — don't upload the native-app
+# tooling, so Vercel never switches into "build a Node project" mode.
+package.json
+package-lock.json
+capacitor.config.json
+scripts/
+node_modules/
+www/
+ios/
+android/
