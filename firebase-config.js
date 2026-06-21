@@ -14,11 +14,14 @@
 // ---------------------------------------------------------------------------
 
 export const firebaseConfig = {
-  apiKey: "YOUR_API_KEY",
-  authDomain: "YOUR_PROJECT.firebaseapp.com",
-  databaseURL: "https://YOUR_PROJECT-default-rtdb.firebaseio.com",
-  projectId: "YOUR_PROJECT",
-  appId: "YOUR_APP_ID",
+  apiKey: "AIzaSyBhYJqq5Wln3X6qiKJscPwWoxDyAwy2SOQ",
+  authDomain: "stopwatch-65e73.firebaseapp.com",
+  databaseURL: "https://stopwatch-65e73-default-rtdb.firebaseio.com",
+  projectId: "stopwatch-65e73",
+  storageBucket: "stopwatch-65e73.firebasestorage.app",
+  messagingSenderId: "1012833640428",
+  appId: "1:1012833640428:web:0c2e0c696120babeefeac9",
+  measurementId: "G-N9E79H3XFJ",
 };
 
 // True once the placeholders above have been replaced with real values.
