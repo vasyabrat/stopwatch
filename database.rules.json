@@ -16,7 +16,15 @@
     },
     "lobbies": {
       ".read": "auth != null",
-      ".write": "auth != null"
+      "$code": {
+        ".write": "auth != null",
+        ".validate": "$code.matches(/^[A-Z0-9]{4}$/) && newData.hasChildren(['host', 'mode', 'count'])",
+        "host": { ".validate": "newData.isString() && newData.val().length <= 20" },
+        "mode": { ".validate": "newData.val() == 'impostor' || newData.val() == 'closest'" },
+        "count": { ".validate": "newData.isNumber()" },
+        "createdAt": { ".validate": "newData.isNumber()" },
+        "$other": { ".validate": false }
+      }
     }
   }
 }

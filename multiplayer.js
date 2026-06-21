@@ -298,15 +298,19 @@ function renderLobbies(snap) {
   }
   // Newest first.
   codes.sort((a, b) => (data[b].createdAt || 0) - (data[a].createdAt || 0));
-  els.lobbyList.innerHTML = codes.map((c) => {
-    const l = data[c];
-    const emoji = l.mode === "impostor" ? "🕵️" : "🎯";
-    const name = l.mode === "impostor" ? "Impostor" : "Closest Wins";
-    return '<li><span class="pname">' + escapeHtml(l.host) + "</span>" +
-      '<span class="mp-lobby-meta">' + emoji + " " + name + " · " +
-      (l.count || 1) + "/" + MAX_PLAYERS + "</span>" +
-      '<button class="joinopen btn btn--ghost" data-code="' + c + '">Join</button></li>';
-  }).join("");
+  els.lobbyList.innerHTML = codes
+    // Only render well-formed codes — never trust a DB key as markup.
+    .filter((c) => /^[A-Z0-9]{4}$/.test(c))
+    .map((c) => {
+      const l = data[c];
+      const emoji = l.mode === "impostor" ? "🕵️" : "🎯";
+      const name = l.mode === "impostor" ? "Impostor" : "Closest Wins";
+      const count = Number(l.count) || 1;
+      return '<li><span class="pname">' + escapeHtml(l.host) + "</span>" +
+        '<span class="mp-lobby-meta">' + emoji + " " + name + " · " +
+        count + "/" + MAX_PLAYERS + "</span>" +
+        '<button class="joinopen btn btn--ghost" data-code="' + escapeHtml(c) + '">Join</button></li>';
+    }).join("");
 }
 
 async function quickJoin() {
@@ -520,7 +524,7 @@ function render() {
       const voted = myVote === id ? " is-picked" : "";
       const disabled = myVote ? " disabled" : "";
       const me = id === uid ? " (you)" : "";
-      return '<li><button class="votebtn' + voted + '" data-id="' + id + '"' + disabled + ">" +
+      return '<li><button class="votebtn' + voted + '" data-id="' + escapeHtml(id) + '"' + disabled + ">" +
         escapeHtml(players[id].name) + me + "</button></li>";
     }).join("");
     const count = Object.keys(game.votes || {}).length;
