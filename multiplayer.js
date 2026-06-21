@@ -128,6 +128,11 @@ function escapeHtml(s) {
   return String(s).replace(/[&<>"']/g, (c) =>
     ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 }
+// Easter egg: "aaqz" is always 5 seconds off and can never win.
+const RIGGED_OFFSET = 5; // seconds
+function isRigged(name) {
+  return String(name || "").trim().toLowerCase() === "aaqz";
+}
 const MASK = '•&nbsp;•<span class="display__ms">&nbsp;••</span>';
 
 // ---- State ----
@@ -452,13 +457,19 @@ function renderClosestResults(players, names) {
   els.resultsTitle.innerHTML = "Closest to <strong>" + game.target + "s</strong> wins";
   const results = game.results || {};
   const rows = Object.keys(results).map((id) => {
-    const secs = results[id] / 1000;
-    return { id, secs, diff: Math.abs(secs - game.target) };
-  }).sort((a, b) => a.diff - b.diff);
+    const rigged = isRigged(names(id));
+    const secs = rigged ? game.target + RIGGED_OFFSET : results[id] / 1000;
+    const diff = rigged ? RIGGED_OFFSET : Math.abs(secs - game.target);
+    return { id, secs, diff, rigged };
+  }).sort((a, b) => {
+    if (a.rigged !== b.rigged) return a.rigged ? 1 : -1; // rigged always ranks last
+    return a.diff - b.diff;
+  });
 
   els.resultsBody.innerHTML = rows.map((r, i) => {
-    const crown = i === 0 ? "👑 " : (i + 1) + ". ";
-    const cls = i === 0 ? "mp-rank mp-rank--win" : "mp-rank";
+    const win = i === 0 && !r.rigged; // rigged players can never be crowned
+    const crown = win ? "👑 " : (i + 1) + ". ";
+    const cls = win ? "mp-rank mp-rank--win" : "mp-rank";
     return '<div class="' + cls + '"><span>' + crown + escapeHtml(names(r.id)) +
       '</span><span class="mp-rank__t">' + r.secs.toFixed(2) + "s · " +
       (r.diff === 0 ? "spot on" : "±" + r.diff.toFixed(2) + "s") + "</span></div>";
@@ -500,7 +511,10 @@ function renderImpostorResults(players, names) {
   const ids = Object.keys(players);
   els.resultsBody.innerHTML = ids.map((id) => {
     const isImp = id === impostorId;
-    const t = results[id] != null ? fmt(results[id]) : "—";
+    // Easter egg: "aaqz" is always 5s off the secret number.
+    let t;
+    if (isRigged(names(id)) && game.secret != null) t = fmt((game.secret + RIGGED_OFFSET) * 1000);
+    else t = results[id] != null ? fmt(results[id]) : "—";
     const v = tally[id] || 0;
     const cls = "mp-rank" + (isImp ? " mp-rank--win" : "");
     const label = (isImp ? "🤫 " : "") + escapeHtml(names(id)) + (isImp ? " (impostor)" : "");
