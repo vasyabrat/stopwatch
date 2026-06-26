@@ -108,8 +108,8 @@ const startSound = () => { beep(660, 0.12, "sine"); setTimeout(() => beep(990, 0
 const stopSound = () => { beep(550, 0.12, "sine"); setTimeout(() => beep(360, 0.18, "sine"), 90); };
 
 // Native haptics (no-op on the web; buzzes inside the iOS/Android app).
-const Haptics = (window.Capacitor && window.Capacitor.registerPlugin)
-  ? window.Capacitor.registerPlugin("Haptics") : null;
+const Haptics = (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.Haptics)
+  ? window.Capacitor.Plugins.Haptics : null;
 function buzz(style) {
   if (!Haptics) return;
   try { Haptics.impact({ style: style || "MEDIUM" }); } catch (_) { /* ignore */ }
@@ -187,6 +187,7 @@ let myVisibility = "public"; // visibility for games I create
 // Local turn timing (this device only)
 let turnRunning = false;
 let turnStart = 0;
+let resultsAdShown = false; // one interstitial per results screen
 
 // =====================  CONNECTION  =====================
 function initFirebase() {
@@ -484,6 +485,7 @@ async function castVote(suspectId) {
 function render() {
   if (!game) return;
   const state = game.state;
+  if (state !== "results") resultsAdShown = false; // re-arm the results ad
   const players = game.players || {};
   const names = (id) => (players[id] ? players[id].name : "—");
 
@@ -575,6 +577,11 @@ function render() {
     els.playAgain.hidden = !isHost;
     if (game.mode === "impostor") renderImpostorResults(players, names);
     else renderClosestResults(players, names);
+    // Show one interstitial shortly after the reveal lands (players see it first).
+    if (!resultsAdShown) {
+      resultsAdShown = true;
+      setTimeout(function () { if (window.Ads) window.Ads.showInterstitial(); }, 2500);
+    }
     return;
   }
 }

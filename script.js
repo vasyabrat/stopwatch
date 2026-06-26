@@ -87,8 +87,8 @@
   }
 
   // ---- Native haptics (no-op on the web; buzzes inside the iOS/Android app) ----
-  const Haptics = (window.Capacitor && window.Capacitor.registerPlugin)
-    ? window.Capacitor.registerPlugin("Haptics") : null;
+  const Haptics = (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.Haptics)
+    ? window.Capacitor.Plugins.Haptics : null;
   function buzz(style) {
     if (!Haptics) return;
     try { Haptics.impact({ style: style || "MEDIUM" }); } catch (_) { /* ignore */ }
@@ -198,6 +198,7 @@
       statusEl.textContent = "Result";
       showResult(elapsed);
       elapsed = 0;                  // each game round is independent
+      if (window.Ads) window.Ads.showInterstitial();
     } else {
       render(elapsed);
       startLabel.textContent = "Resume";

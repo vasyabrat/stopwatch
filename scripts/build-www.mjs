@@ -10,6 +10,7 @@ const FILES = [
   "index.html",
   "styles.css",
   "script.js",
+  "ads.js",
   "multiplayer.js",
   "firebase-config.js",
   "manifest.webmanifest",
