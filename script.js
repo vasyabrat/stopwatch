@@ -198,7 +198,6 @@
       statusEl.textContent = "Result";
       showResult(elapsed);
       elapsed = 0;                  // each game round is independent
-      if (window.Ads) window.Ads.showInterstitial();
     } else {
       render(elapsed);
       startLabel.textContent = "Resume";

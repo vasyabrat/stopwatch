@@ -187,7 +187,6 @@ let myVisibility = "public"; // visibility for games I create
 // Local turn timing (this device only)
 let turnRunning = false;
 let turnStart = 0;
-let resultsAdShown = false; // one interstitial per results screen
 
 // =====================  CONNECTION  =====================
 function initFirebase() {
@@ -485,7 +484,6 @@ async function castVote(suspectId) {
 function render() {
   if (!game) return;
   const state = game.state;
-  if (state !== "results") resultsAdShown = false; // re-arm the results ad
   const players = game.players || {};
   const names = (id) => (players[id] ? players[id].name : "—");
 
@@ -577,11 +575,6 @@ function render() {
     els.playAgain.hidden = !isHost;
     if (game.mode === "impostor") renderImpostorResults(players, names);
     else renderClosestResults(players, names);
-    // Show one interstitial shortly after the reveal lands (players see it first).
-    if (!resultsAdShown) {
-      resultsAdShown = true;
-      setTimeout(function () { if (window.Ads) window.Ads.showInterstitial(); }, 2500);
-    }
     return;
   }
 }

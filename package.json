@@ -12,7 +12,6 @@
     "android": "npm run sync && cap open android"
   },
   "dependencies": {
-    "@capacitor-community/admob": "^6.2.0",
     "@capacitor/android": "^6.1.2",
     "@capacitor/core": "^6.1.2",
     "@capacitor/haptics": "^6.0.2",
